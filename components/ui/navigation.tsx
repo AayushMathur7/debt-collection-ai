@@ -13,7 +13,7 @@ export function Navigation() {
   const pathname = usePathname();
 
   return (
-    <nav className="flex items-center justify-center border-b">
+    <nav className="flex items-center justify-center border-b mt-4">
       <div className="flex space-x-4">
         {navItems.map((item) => {
           const isActive = pathname === item.path;

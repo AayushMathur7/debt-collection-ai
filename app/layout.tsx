@@ -26,7 +26,7 @@ export default function RootLayout({
             <ClientLayout>
               {children}
             </ClientLayout>
-            <Toaster richColors closeButton position="top-right" />
+            <Toaster richColors closeButton position="bottom-right" />
           </AgentSettingsProvider>
         </CustomersProvider>
       </body>

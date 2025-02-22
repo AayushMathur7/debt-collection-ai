@@ -63,7 +63,7 @@ export function AgentSettingsForm() {
           id="miniMiranda"
           value={settings.miniMiranda}
           onChange={(e) => setSettings({ ...settings, miniMiranda: e.target.value })}
-          placeholder="Enter Mini-Miranda warning"
+          placeholder="Enter Mini-Miranda"
         />
       </div>
 
@@ -76,7 +76,6 @@ export function AgentSettingsForm() {
           placeholder="Enter disclaimers (one per line)"
           rows={5}
         />
-        <p className="text-sm text-muted-foreground">Enter each disclaimer on a new line</p>
       </div>
 
       <Button type="submit">Save Settings</Button>
