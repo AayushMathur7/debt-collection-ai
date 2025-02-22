@@ -20,7 +20,8 @@ import {
 import { StrategyModal } from '@/components/strategy-modal';
 import { CustomerDetailsModal } from '@/components/customer-details-modal';
 import type { Customer } from '@/context/CustomersContext';
-import { Info, Phone, PhoneOff } from 'lucide-react';
+import { Info, Phone, PhoneOff, Eye } from 'lucide-react';
+import { CallTranscriptModal } from '@/components/call-transcript-modal';
 
 // Mock segments and their filtering logic
 const segments = [
@@ -86,6 +87,8 @@ export default function ExecuteCampaignPage() {
   const [detailsCustomer, setDetailsCustomer] = useState<Customer | null>(null);
   const [strategyModalOpen, setStrategyModalOpen] = useState(false);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+  const [callTranscriptModalOpen, setCallTranscriptModalOpen] = useState(false);
+  const [activeCallCustomer, setActiveCallCustomer] = useState<Customer | null>(null);
   const [callStates, setCallStates] = useState<Record<string, CustomerCallState>>({});
 
   // Filter customers based on selected segment
@@ -115,6 +118,14 @@ export default function ExecuteCampaignPage() {
   };
 
   const handleCallStateChange = (customer: Customer, state: CallState) => {
+    if (state === 'in-progress') {
+      setActiveCallCustomer(customer);
+      setCallTranscriptModalOpen(true);
+    } else if (state === 'completed' || state === 'failed') {
+      setActiveCallCustomer(null);
+      setCallTranscriptModalOpen(false);
+    }
+
     setCallStates(prev => ({
       ...prev,
       [customer.ssn]: {
@@ -127,6 +138,11 @@ export default function ExecuteCampaignPage() {
     }));
   };
 
+  const handleViewCallTranscript = (customer: Customer) => {
+    setActiveCallCustomer(customer);
+    setCallTranscriptModalOpen(true);
+  };
+
   const getCallStateButton = (customer: Customer) => {
     const callState = callStates[customer.ssn] || { state: 'idle' };
 
@@ -135,12 +151,12 @@ export default function ExecuteCampaignPage() {
         return (
           <Button
             size="sm"
-            variant="destructive"
-            onClick={() => handleCallStateChange(customer, 'completed')}
-            className="w-[140px] animate-pulse"
+            variant="secondary"
+            onClick={() => handleViewCallTranscript(customer)}
+            className="w-[140px]"
           >
-            <Phone className="mr-2 h-4 w-4" />
-            In Call ({Math.round((new Date().getTime() - (callState.startTime?.getTime() || 0)) / 1000)}s)
+            <Eye className="mr-2 h-4 w-4" />
+            View Call
           </Button>
         );
       case 'completed':
@@ -268,6 +284,16 @@ export default function ExecuteCampaignPage() {
             setDetailsModalOpen(open);
             if (!open) setDetailsCustomer(null);
           }}
+        />
+      )}
+
+      {activeCallCustomer && callStates[activeCallCustomer.ssn]?.startTime && (
+        <CallTranscriptModal
+          customer={activeCallCustomer}
+          open={callTranscriptModalOpen}
+          onOpenChange={setCallTranscriptModalOpen}
+          onEndCall={() => handleCallStateChange(activeCallCustomer, 'completed')}
+          startTime={callStates[activeCallCustomer.ssn].startTime!}
         />
       )}
     </div>

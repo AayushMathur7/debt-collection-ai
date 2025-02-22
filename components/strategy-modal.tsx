@@ -73,9 +73,6 @@ Collection Strategy for ${customer.name}:
 
   const handleStartCall = () => {
     onCallStart();
-    toast.success('Call initiated', {
-      description: 'Starting collection call with prepared strategy...'
-    });
     onOpenChange(false);
   };
 
