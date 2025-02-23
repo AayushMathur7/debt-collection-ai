@@ -118,6 +118,7 @@ export default function ExecuteCampaignPage() {
   };
 
   const handleCallStateChange = (customer: Customer, state: CallState) => {
+    console.log('handleCallStateChange', state)
     if (state === 'in-progress') {
       setActiveCallCustomer(customer);
       setCallTranscriptModalOpen(true);
@@ -149,13 +150,10 @@ export default function ExecuteCampaignPage() {
 
   // Add new handler for modal close
   const handleTranscriptModalClose = (open: boolean) => {
+    // Only update call state if it's being closed by the "End Call" button
+    // The state will already be 'completed' in that case
     setCallTranscriptModalOpen(open);
-    if (!open && activeCallCustomer) {
-      // If the modal is being closed and there's an active call, mark it as completed
-      const callState = callStates[activeCallCustomer.ssn]?.state;
-      if (callState === 'in-progress') {
-        handleCallStateChange(activeCallCustomer, 'completed');
-      }
+    if (!open) {
       setActiveCallCustomer(null);
     }
   };

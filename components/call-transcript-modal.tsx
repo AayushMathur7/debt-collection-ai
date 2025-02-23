@@ -39,16 +39,55 @@ export function CallTranscriptModal({
   } = useConversationContext();
   const [duration, setDuration] = useState(0);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const [isClosing, setIsClosing] = useState(false);
+
+  // Shared function to handle call ending
+  const endCallSafely = async () => {
+    if (connectionStatus === 'connected' || connectionStatus === 'ready') {
+      setIsClosing(true);
+      try {
+        await endCall();
+        // Wait a bit to ensure the call is fully ended
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        onEndCall();
+      } catch (error) {
+        console.error('Error ending call:', error);
+      }
+    }
+  };
 
   useEffect(() => {
-    if (open) {
-      // Start the call when the modal opens
+    let mounted = true;
+
+    if (open && !isClosing && mounted) {
       startCall().catch(console.error);
-    } else {
-      // End the call when the modal closes
-      endCall().catch(console.error);
     }
-  }, [open, startCall, endCall]);
+
+    return () => {
+      mounted = false;
+      if (!open) {
+        endCallSafely();
+      }
+    };
+  }, [open, isClosing]);
+
+  const handleDialogChange = async (newOpen: boolean) => {
+    if (!newOpen && !isClosing) {
+      await endCallSafely();
+      onOpenChange(false);
+      setIsClosing(false);
+    } else if (newOpen && !isClosing) {
+      onOpenChange(true);
+    }
+  };
+
+  const handleEndCall = async () => {
+    if (!isClosing) {
+      await endCallSafely();
+      onOpenChange(false);
+      setIsClosing(false);
+    }
+  };
 
   useEffect(() => {
     // Calculate initial duration
@@ -70,12 +109,6 @@ export function CallTranscriptModal({
     }
   }, [transcript]);
 
-  const handleEndCall = async () => {
-    await endCall();
-    onEndCall();
-    onOpenChange(false);
-  };
-
   const getStatusColor = () => {
     switch (connectionStatus) {
       case 'connected':
@@ -91,7 +124,7 @@ export function CallTranscriptModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleDialogChange}>
       <DialogContent className="max-h-[90vh] max-w-[800px] p-0">
         <DialogHeader className="p-6 pb-0">
           <DialogTitle>Live Call Transcript</DialogTitle>

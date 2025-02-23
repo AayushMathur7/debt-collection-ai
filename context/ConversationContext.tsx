@@ -79,6 +79,7 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
 
   const endCall = useCallback(async () => {
     try {
+      console.log('ending call');
       await conversation.endSession();
       setConversationId(null);
     } catch (error) {
