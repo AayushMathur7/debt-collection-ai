@@ -22,7 +22,9 @@ import { CustomerDetailsModal } from '@/components/customer-details-modal';
 import type { Customer } from '@/context/CustomersContext';
 import { Info, Phone, PhoneOff, Eye } from 'lucide-react';
 import { CallTranscriptModal } from '@/components/call-transcript-modal';
-import {  OpenAI } from 'openai';
+import { generateObject, generateText } from "ai"
+import { createOpenAI } from "@ai-sdk/openai"
+import { z } from "zod"
 
 // Mock segments and their filtering logic
 const segments = [
@@ -126,60 +128,8 @@ export default function ExecuteCampaignPage() {
     setDetailsModalOpen(true);
   };
 
-  const summarizeConversation = async (transcript: string) => {
-    const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
-
-    try {
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-          {
-            role: "system",
-            content: "You are an AI assistant that summarizes debt collection calls. Focus on key points, agreements made, and the outcome of the conversation."
-          },
-          {
-            role: "user",
-            content: `Please summarize this debt collection call transcript and determine if it was successful, unsuccessful, or pending: ${transcript}`
-          }
-        ]
-      });
-
-      const summary = response.choices[0]?.message?.content || "No summary available";
-      // Determine outcome based on keywords in the summary
-      let outcome: 'successful' | 'unsuccessful' | 'pending' = 'pending';
-      if (summary.toLowerCase().includes('agreed') || summary.toLowerCase().includes('payment')) {
-        outcome = 'successful';
-      } else if (summary.toLowerCase().includes('refused') || summary.toLowerCase().includes('unable')) {
-        outcome = 'unsuccessful';
-      }
-
-      return { summary, outcome };
-    } catch (error) {
-      console.error('Error generating summary:', error);
-      return { 
-        summary: "Unable to generate summary",
-        outcome: 'pending' as const
-      };
-    }
-  };
-
   const handleCallStateChange = async (customer: Customer, state: CallState, transcript?: string) => {
     console.log('handleCallStateChange', state);
-    if (state === 'completed' && transcript) {
-      const { summary, outcome } = await summarizeConversation(transcript);
-      const newSummary: ConversationSummary = {
-        date: new Date(),
-        summary,
-        outcome
-      };
-
-      setConversationHistory(prev => ({
-        ...prev,
-        [customer.ssn]: [...(prev[customer.ssn] || []), newSummary]
-      }));
-    }
 
     setCallStates(prev => ({
       ...prev,
@@ -203,11 +153,14 @@ export default function ExecuteCampaignPage() {
   };
 
   // Add new handler for modal close
-  const handleTranscriptModalClose = (open: boolean) => {
-    // Only update call state if it's being closed by the "End Call" button
-    // The state will already be 'completed' in that case
+  const handleTranscriptModalClose = (open: boolean, transcript?: string) => {  // Add transcript parameter
     setCallTranscriptModalOpen(open);
-    if (!open) {
+    if (!open && activeCallCustomer) {
+      handleCallStateChange(activeCallCustomer, 'completed', transcript);  // Pass the transcript
+      setCallStates(prev => ({
+        ...prev,
+        [activeCallCustomer.ssn]: { state: 'completed' }
+      }));
       setActiveCallCustomer(null);
     }
   };
@@ -359,12 +312,12 @@ export default function ExecuteCampaignPage() {
 
       {activeCallCustomer && callStates[activeCallCustomer.ssn]?.startTime && (
         <CallTranscriptModal
-          customer={activeCallCustomer}
-          open={callTranscriptModalOpen}
-          onOpenChange={handleTranscriptModalClose}
-          onEndCall={() => handleCallStateChange(activeCallCustomer, 'completed')}
-          startTime={callStates[activeCallCustomer.ssn].startTime!}
-        />
+        customer={activeCallCustomer}
+        open={callTranscriptModalOpen}
+        onOpenChange={(open, transcript) => handleTranscriptModalClose(open, transcript)}  // Modify to pass transcript
+        onEndCall={(transcript) => handleCallStateChange(activeCallCustomer!, 'completed', transcript)}
+        startTime={callStates[activeCallCustomer?.ssn]?.startTime!}
+      />
       )}
     </div>
   );
