@@ -142,6 +142,7 @@ export function CustomerDetailsModal({
                         </span>
                       </div>
                       <p className="text-sm text-muted-foreground">{conversation.summary}</p>
+                      { conversation.outcome ==  "successful" && <p className="text-sm text-muted-foreground font-bold">Payment Portal Link: <a href={`https://debtpayway.lovable.app`} target="_blank" rel="noopener noreferrer">https://debtpayway.lovable.app</a></p>}
                       {index < conversationHistory.length - 1 && <Separator className="my-2" />}
                     </div>
                   ))}
