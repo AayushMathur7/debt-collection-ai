@@ -16,9 +16,15 @@ interface ConversationContextType {
   connectionStatus: string;
   isCallActive: boolean;
   conversationId: string | null;
-  startCall: () => Promise<void>;
+  startCall: (payload: OutboundCallPayload) => Promise<void>;
   endCall: () => Promise<void>;
   addTranscriptEntry: (entry: TranscriptEntry) => void;
+}
+
+interface OutboundCallPayload {
+  number: string;
+  prompt: string;
+  first_message: string;
 }
 
 const ConversationContext = createContext<ConversationContextType | undefined>(undefined);
@@ -66,16 +72,28 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
     },
   });
 
-  const startCall = useCallback(async () => {
+  const startCall = useCallback(async (payload: OutboundCallPayload) => {
     try {
-      await conversation.startSession({
-        agentId: "RWMYfB6iooxJLltlgX22", // Your agent ID
+      console.log('starting call');
+      const response = await fetch('/api/outbound-call', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          number: payload.number,
+          prompt: payload.prompt,
+          first_message: payload.first_message
+        }),
       });
-      setConversationId(Date.now().toString()); // Generate a unique ID for now
+
+      const data = await response.json();
+      setConversationId(data.callSid);
     } catch (error) {
+      console.error('Error:', error);
       setError(error instanceof Error ? error.message : 'Failed to start call');
     }
-  }, [conversation]);
+  }, []);
 
   const endCall = useCallback(async () => {
     try {
