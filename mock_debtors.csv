@@ -1,0 +1,11 @@
+name,amount,lastContact,paymentHistory,age,debtAge,debtType,state,city,language
+John Smith,15000,2024-01-15,Made partial payment of $500 in December,35,90,Credit Card,CA,Los Angeles,English
+Maria Garcia,7500,2024-02-01,No payments in last 3 months,42,120,Personal Loan,TX,Houston,Spanish
+David Johnson,3000,2024-01-20,Regular payments until November,28,60,Medical,NY,Brooklyn,English
+Sarah Williams,25000,2023-12-15,Multiple missed payments,45,180,Business Loan,FL,Miami,English
+Michael Chen,12000,2024-02-10,Promised payment by month end,33,45,Student Loan,WA,Seattle,Mandarin
+Emily Brown,5500,2024-01-05,Payment plan defaulted,29,150,Credit Card,IL,Chicago,English
+James Wilson,18000,2023-11-20,No contact established,51,210,Mortgage,AZ,Phoenix,English
+Ana Rodriguez,9000,2024-02-05,Disputed charges,37,75,Personal Loan,CA,San Diego,Spanish
+Robert Taylor,4500,2024-01-25,Made arrangement last week,44,30,Medical,TX,Austin,English
+Lisa Anderson,30000,2023-12-01,Filed for bankruptcy,39,240,Business Loan,GA,Atlanta,English 

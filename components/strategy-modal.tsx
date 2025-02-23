@@ -14,6 +14,9 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAgentSettings } from '@/context/AgentSettingsContext';
 import { Customer } from '@/context/CustomersContext';
+import { useConversation } from '@11labs/react';
+import { useCallback } from 'react';
+import { Conversation } from './conversation';
 
 interface StrategyModalProps {
   customer: Customer;
@@ -116,6 +119,8 @@ Collection Strategy for ${customer.name}:
           </div>
         </ScrollArea>
 
+        <Conversation />
+        
         <div className="p-4 border-t bg-muted/50">
           <DialogFooter className="sm:space-x-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
