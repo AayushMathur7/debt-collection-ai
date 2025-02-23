@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from 'sonner';
 import { CustomersProvider } from "@/context/CustomersContext";
 import { AgentSettingsProvider } from "@/context/AgentSettingsContext";
+import { ConversationProvider } from '@/context/ConversationContext';
 import { ClientLayout } from "./layout.client";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -21,14 +22,16 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <CustomersProvider>
-          <AgentSettingsProvider>
-            <ClientLayout>
-              {children}
-            </ClientLayout>
+        <AgentSettingsProvider>
+          <CustomersProvider>
+            <ConversationProvider>
+              <ClientLayout>
+                {children}
+              </ClientLayout>
+            </ConversationProvider>
             <Toaster richColors closeButton position="bottom-right" />
-          </AgentSettingsProvider>
-        </CustomersProvider>
+          </CustomersProvider>
+        </AgentSettingsProvider>
       </body>
     </html>
   );

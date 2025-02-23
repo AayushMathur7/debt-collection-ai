@@ -9,7 +9,9 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Customer } from '@/context/CustomersContext';
 import { useAgentSettings } from '@/context/AgentSettingsContext';
-import { useEffect, useState } from 'react';
+import { useConversationContext } from '@/context/ConversationContext';
+import { useEffect, useState, useRef } from 'react';
+import { AlertCircle, Mic, Volume2 } from 'lucide-react';
 
 interface CallTranscriptModalProps {
   customer: Customer;
@@ -19,30 +21,6 @@ interface CallTranscriptModalProps {
   startTime: Date;
 }
 
-// Mock transcript data - in a real app, this would be streamed/updated in real-time
-const mockTranscript = [
-  {
-    speaker: "Agent",
-    timestamp: new Date(),
-    text: "Hello, this is AI Collection Assistant calling from ABC Collections. I hope you are having a good day."
-  },
-  {
-    speaker: "Customer",
-    timestamp: new Date(),
-    text: "Yes, hello."
-  },
-  {
-    speaker: "Agent",
-    timestamp: new Date(),
-    text: "This is an attempt to collect a debt, and any information obtained will be used for that purpose. This communication is from a debt collector."
-  },
-  {
-    speaker: "Agent",
-    timestamp: new Date(),
-    text: "I'm calling regarding your outstanding balance. Are you available to discuss this matter?"
-  }
-];
-
 export function CallTranscriptModal({ 
   customer, 
   open, 
@@ -51,7 +29,26 @@ export function CallTranscriptModal({
   startTime 
 }: CallTranscriptModalProps) {
   const { settings } = useAgentSettings();
+  const { 
+    transcript, 
+    isConnecting, 
+    error, 
+    connectionStatus,
+    startCall,
+    endCall 
+  } = useConversationContext();
   const [duration, setDuration] = useState(0);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (open) {
+      // Start the call when the modal opens
+      startCall().catch(console.error);
+    } else {
+      // End the call when the modal closes
+      endCall().catch(console.error);
+    }
+  }, [open, startCall, endCall]);
 
   useEffect(() => {
     // Calculate initial duration
@@ -66,6 +63,33 @@ export function CallTranscriptModal({
     return () => clearInterval(intervalId);
   }, [startTime, open]);
 
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (scrollAreaRef.current) {
+      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+    }
+  }, [transcript]);
+
+  const handleEndCall = async () => {
+    await endCall();
+    onEndCall();
+    onOpenChange(false);
+  };
+
+  const getStatusColor = () => {
+    switch (connectionStatus) {
+      case 'connected':
+      case 'ready':
+        return 'bg-green-500/10 text-green-500';
+      case 'connecting':
+        return 'bg-blue-500/10 text-blue-500';
+      case 'error':
+        return 'bg-destructive/10 text-destructive';
+      default:
+        return 'bg-muted/50 text-muted-foreground';
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-[800px] p-0">
@@ -76,8 +100,32 @@ export function CallTranscriptModal({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="h-[calc(90vh-12rem)]">
+        <ScrollArea className="h-[calc(90vh-12rem)]" ref={scrollAreaRef}>
           <div className="p-6 space-y-6">
+            {/* Connection Status */}
+            <div className={`p-4 rounded-lg flex items-center gap-2 ${getStatusColor()}`}>
+              {isConnecting ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent" />
+              ) : (
+                <>
+                  <Mic className="h-4 w-4" />
+                  <Volume2 className="h-4 w-4" />
+                </>
+              )}
+              <p className="flex-1">
+                Status: {connectionStatus}
+                {connectionStatus === 'ready' && ' - Agent is listening'}
+              </p>
+            </div>
+
+            {/* Error Message */}
+            {error && (
+              <div className="bg-destructive/10 text-destructive p-4 rounded-lg flex items-center gap-2">
+                <AlertCircle className="h-4 w-4" />
+                <p>{error}</p>
+              </div>
+            )}
+
             {/* Call Information */}
             <div className="bg-muted/50 p-4 rounded-lg space-y-2">
               <div className="flex justify-between items-center">
@@ -96,7 +144,7 @@ export function CallTranscriptModal({
 
             {/* Transcript */}
             <div className="space-y-4">
-              {mockTranscript.map((entry, index) => (
+              {transcript.map((entry, index) => (
                 <div
                   key={index}
                   className={`flex gap-4 ${
@@ -133,7 +181,8 @@ export function CallTranscriptModal({
             </p>
             <Button
               variant="destructive"
-              onClick={onEndCall}
+              onClick={handleEndCall}
+              disabled={isConnecting || connectionStatus === 'disconnected'}
             >
               End Call
             </Button>

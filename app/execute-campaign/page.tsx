@@ -139,8 +139,25 @@ export default function ExecuteCampaignPage() {
   };
 
   const handleViewCallTranscript = (customer: Customer) => {
-    setActiveCallCustomer(customer);
-    setCallTranscriptModalOpen(true);
+    // Only set active customer if the call is in progress or completed
+    const callState = callStates[customer.ssn]?.state || 'idle';
+    if (callState === 'in-progress' || callState === 'completed') {
+      setActiveCallCustomer(customer);
+      setCallTranscriptModalOpen(true);
+    }
+  };
+
+  // Add new handler for modal close
+  const handleTranscriptModalClose = (open: boolean) => {
+    setCallTranscriptModalOpen(open);
+    if (!open && activeCallCustomer) {
+      // If the modal is being closed and there's an active call, mark it as completed
+      const callState = callStates[activeCallCustomer.ssn]?.state;
+      if (callState === 'in-progress') {
+        handleCallStateChange(activeCallCustomer, 'completed');
+      }
+      setActiveCallCustomer(null);
+    }
   };
 
   const getCallStateButton = (customer: Customer) => {
@@ -153,10 +170,10 @@ export default function ExecuteCampaignPage() {
             size="sm"
             variant="secondary"
             onClick={() => handleViewCallTranscript(customer)}
-            className="w-[140px]"
+            className="w-[140px] animate-pulse"
           >
             <Eye className="mr-2 h-4 w-4" />
-            View Call
+            View Live Call
           </Button>
         );
       case 'completed':
@@ -164,11 +181,11 @@ export default function ExecuteCampaignPage() {
           <Button
             size="sm"
             variant="outline"
+            onClick={() => handleViewCallTranscript(customer)}
             className="w-[140px] text-green-600"
-            disabled
           >
             <Phone className="mr-2 h-4 w-4" />
-            Call Complete ({callState.duration}s)
+            View Transcript
           </Button>
         );
       case 'failed':
@@ -291,7 +308,7 @@ export default function ExecuteCampaignPage() {
         <CallTranscriptModal
           customer={activeCallCustomer}
           open={callTranscriptModalOpen}
-          onOpenChange={setCallTranscriptModalOpen}
+          onOpenChange={handleTranscriptModalClose}
           onEndCall={() => handleCallStateChange(activeCallCustomer, 'completed')}
           startTime={callStates[activeCallCustomer.ssn].startTime!}
         />
