@@ -12,6 +12,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Customer } from '@/context/CustomersContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { BadgeCheck, Calendar, DollarSign } from 'lucide-react';
 
 interface ConversationSummary {
   date: Date;
@@ -26,6 +28,22 @@ interface CustomerDetailsModalProps {
   conversationHistory?: ConversationSummary[];
 }
 
+interface InfoItemProps {
+  icon: any;
+  label: string;
+  value: string;
+}
+
+const InfoItem = ({ icon: Icon, label, value }: InfoItemProps) => (
+  <div>
+    <p className="text-sm font-medium text-muted-foreground">{label}</p>
+    <div className="flex items-center space-x-2">
+      <Icon className="h-4 w-4 text-muted-foreground" />
+      <p>{value}</p>
+    </div>
+  </div>
+);
+
 export function CustomerDetailsModal({
   customer,
   open,
@@ -34,64 +52,47 @@ export function CustomerDetailsModal({
 }: CustomerDetailsModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[800px] max-h-[90vh]">
+      <DialogContent className="max-w-4xl max-h-[90vh]">
         <DialogHeader>
-          <DialogTitle>Customer Details</DialogTitle>
-          <DialogDescription>
-            Detailed information about {customer.name}
-          </DialogDescription>
+          <DialogTitle className="text-2xl font-bold">Customer Profile</DialogTitle>
         </DialogHeader>
-        
         <ScrollArea className="h-[calc(90vh-8rem)]">
           <div className="grid gap-6 p-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Personal Information</CardTitle>
+            <Card className="overflow-hidden">
+              <CardHeader className="bg-primary p-6">
+                <div className="flex items-center space-x-4">
+                  <Avatar className="h-12 w-12 border-4 border-background">
+                    <AvatarFallback>{customer.name.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <CardTitle className="text-3xl font-bold text-primary-foreground">{customer.name}</CardTitle>
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent className="grid gap-2">
+              <CardContent className="grid gap-4 p-6">
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Name</p>
-                    <p>{customer.name}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Age</p>
-                    <p>{customer.age}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">SSN</p>
-                    <p>{customer.ssn}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Language</p>
-                    <p>{customer.language}</p>
-                  </div>
+                  <InfoItem icon={BadgeCheck} label="SSN" value={customer.ssn} />
+                  <InfoItem icon={Calendar} label="Language" value={customer.language} />
                 </div>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle>Debt Information</CardTitle>
+                <CardTitle className="flex items-center">
+                  <DollarSign className="mr-2 h-5 w-5 text-primary" />
+                  Debt Information
+                </CardTitle>
               </CardHeader>
-              <CardContent className="grid gap-2">
+              <CardContent className="grid gap-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium">Total Owed</span>
+                  <span className="text-2xl font-bold">${customer.totalOwed.toLocaleString()}</span>
+                </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Total Owed</p>
-                    <p className="text-lg font-medium">${customer.totalOwed.toLocaleString()}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Type of Debt</p>
-                    <p>{customer.typeOfDebt}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Status</p>
-                    <p className="capitalize">{customer.debtStatus}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Debt Age</p>
-                    <p>{customer.debtAge} days</p>
-                  </div>
+                  <InfoItem icon={Calendar} label="Debt Age" value={`${customer.debtAge} days`} />
+                  <InfoItem icon={BadgeCheck} label="Status" value={customer.debtStatus} />
+                  <InfoItem icon={DollarSign} label="Type" value={customer.typeOfDebt} />
                 </div>
               </CardContent>
             </Card>

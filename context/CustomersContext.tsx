@@ -14,6 +14,8 @@ export interface Customer {
   typeOfDebt: string;
   debtAge: number;
   language: string;
+  dob: string;
+  account_number: string;
 }
 
 type CustomersContextType = {

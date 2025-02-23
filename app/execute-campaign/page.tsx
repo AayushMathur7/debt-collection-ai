@@ -40,6 +40,7 @@ const mockCustomers: Customer[] = [
     name: "John Smith",
     age: 35,
     ssn: "XXX-XX-1234", 
+    dob: "1985-01-01",
     totalOwed: 15000,
     debtStatus: "overdue",
     state: "CA",
@@ -47,12 +48,14 @@ const mockCustomers: Customer[] = [
     zipcode: "90001",
     typeOfDebt: "Credit Card",
     debtAge: 90,
-    language: "English"
+    language: "English",
+    account_number: "#2342342341"
   },
   {
     name: "Maria Garcia",
     age: 42,
     ssn: "XXX-XX-5678",
+    dob: "1980-05-15",
     totalOwed: 7500,
     debtStatus: "defaulted", 
     state: "TX",
@@ -60,12 +63,14 @@ const mockCustomers: Customer[] = [
     zipcode: "77001",
     typeOfDebt: "Personal Loan",
     debtAge: 120,
-    language: "Spanish"
+    language: "Spanish",
+    account_number: "#456465466"
   },
   {
     name: "David Johnson",
     age: 28,
     ssn: "XXX-XX-9012",
+    dob: "1992-03-20",
     totalOwed: 3000,
     debtStatus: "overdue",
     state: "NY", 
@@ -73,12 +78,14 @@ const mockCustomers: Customer[] = [
     zipcode: "11201",
     typeOfDebt: "Medical",
     debtAge: 60,
-    language: "English"
+    language: "English",
+    account_number: "#567567567"
   },
   {
     name: "Sarah Williams",
     age: 45,
     ssn: "XXX-XX-3456",
+    dob: "1975-07-10",
     totalOwed: 12500,
     debtStatus: "overdue",
     state: "FL",
@@ -86,12 +93,14 @@ const mockCustomers: Customer[] = [
     zipcode: "33101",
     typeOfDebt: "Auto Loan",
     debtAge: 150,
-    language: "English"
+    language: "English",
+    account_number: "#7897897893"
   },
   {
     name: "Michael Chen",
     age: 31,
     ssn: "XXX-XX-7890",
+    dob: "1990-04-15",
     totalOwed: 8900,
     debtStatus: "defaulted",
     state: "WA",
@@ -99,12 +108,14 @@ const mockCustomers: Customer[] = [
     zipcode: "98101",
     typeOfDebt: "Student Loan",
     debtAge: 180,
-    language: "English"
+    language: "English",
+    account_number: "#9019019019"
   },
   {
     name: "Ana Rodriguez",
     age: 39,
     ssn: "XXX-XX-2345",
+    dob: "1982-11-25",
     totalOwed: 4500,
     debtStatus: "overdue",
     state: "AZ",
@@ -112,12 +123,14 @@ const mockCustomers: Customer[] = [
     zipcode: "85001",
     typeOfDebt: "Credit Card",
     debtAge: 75,
-    language: "Spanish"
+    language: "Spanish",
+    account_number: "#1011011010"
   },
   {
     name: "Robert Kim",
     age: 52,
     ssn: "XXX-XX-6789",
+    dob: "1970-02-10",
     totalOwed: 17800,
     debtStatus: "defaulted",
     state: "IL",
@@ -125,12 +138,14 @@ const mockCustomers: Customer[] = [
     zipcode: "60601",
     typeOfDebt: "Business Loan",
     debtAge: 210,
-    language: "Korean"
+    language: "Korean",
+    account_number: "#112112112561"
   },
   {
     name: "Emily Brown",
     age: 29,
     ssn: "XXX-XX-0123",
+    dob: "1993-06-15",  
     totalOwed: 6200,
     debtStatus: "overdue",
     state: "MA",
@@ -138,7 +153,8 @@ const mockCustomers: Customer[] = [
     zipcode: "02108",
     typeOfDebt: "Personal Loan",
     debtAge: 45,
-    language: "English"
+    language: "English",
+    account_number: "#1231231231"
   }
 ];
 
@@ -325,19 +341,23 @@ export default function ExecuteCampaignPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
+                  <TableHead>DOB</TableHead>
                   <TableHead>Amount Owed</TableHead>
                   <TableHead>Debt Type</TableHead>
+                  <TableHead>Account Number</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Location</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="text-right"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredCustomers.map((customer) => (
                   <TableRow key={customer.ssn}>
                     <TableCell>{customer.name}</TableCell>
+                    <TableCell>{customer.dob}</TableCell>
                     <TableCell>${customer.totalOwed.toLocaleString()}</TableCell>
                     <TableCell>{customer.typeOfDebt}</TableCell>
+                    <TableCell>{customer.account_number}</TableCell>
                     <TableCell>
                       <span className="capitalize">{customer.debtStatus}</span>
                     </TableCell>
@@ -346,10 +366,10 @@ export default function ExecuteCampaignPage() {
                       <div className="flex justify-end gap-2">
                         <Button
                           size="sm"
-                          variant="ghost"
+                          variant="outline"
                           onClick={() => handleViewDetails(customer)}
                         >
-                          <Info className="h-4 w-4" />
+                          Customer Details
                         </Button>
                         {getCallStateButton(customer)}
                       </div>
