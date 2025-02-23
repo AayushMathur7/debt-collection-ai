@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const navItems = [
-  { path: '/customers', label: 'Customers' },
   { path: '/configure-agent', label: 'Configure Agent' },
   { path: '/execute-campaign', label: 'Execute Campaign' },
 ];

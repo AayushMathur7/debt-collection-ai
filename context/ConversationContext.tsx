@@ -22,7 +22,7 @@ interface ConversationContextType {
   startCall: (payload: OutboundCallPayload) => Promise<void>;
   endCall: () => Promise<void>;
   addTranscriptEntry: (entry: TranscriptEntry) => void;
-  startPolling: (startTime: Date, customerSSN: string) => void;
+  startPolling: (startTime: Date, customerSSN: string, onComplete?: (ssn: string) => void) => void;
   stopPolling: () => void;
   isPolling: boolean;
 }
@@ -135,7 +135,7 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
     setTranscript(prev => [...prev, entry]);
   }, []);
 
-  const startPolling = useCallback((startTime: Date, customerSSN: string) => {
+  const startPolling = useCallback((startTime: Date, customerSSN: string, onComplete?: (ssn: string) => void) => {
     if (isPolling) return;
 
     currentCustomerSSN.current = customerSSN;
@@ -147,24 +147,47 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
       console.log('polling for conversations');
       try {
         const response = await fetch(
-          `https://api.elevenlabs.io/v1/convai/conversations?agent_id=${process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_ID}`,
+          `https://api.elevenlabs.io/v1/convai/conversations${process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_ID ? `?agent_id=${process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_ID}&page_size=5` : ''}`,
           {
             method: 'GET',
-            headers: { 'xi-api-key': process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY || '' }
+            headers: {
+              'Accept': 'application/json',
+              'xi-api-key': process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY || ''
+            }
           }
         );
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ detail: response.statusText }));
+          console.error('Error polling conversations:', errorData);
+          setError(`Failed to poll conversations: ${errorData.detail || response.statusText}`);
+          stopPolling(); // Stop polling on auth error
+          return;
+        }
+
         const data = await response.json();
+        console.log('data', data);
         
-        const newConversation = data.conversations?.find((conv: any) => 
-          conv.start_time_unix_secs > callStartTimeUnix && 
-          conv.status === 'completed'
+        // Check if conversations array exists
+        if (!data.conversations) {
+          console.error('No conversations found in response:', data);
+          return;
+        }
+
+        console.log("callStartTimeUnix", callStartTimeUnix);
+        const newConversation = data.conversations.find((conv: any) => 
+          conv.start_time_unix_secs > callStartTimeUnix
         );
 
+      console.log("newConversation", newConversation);
         if (newConversation) {
           const detailsResponse = await fetch(
             `https://api.elevenlabs.io/v1/convai/conversations/${newConversation.conversation_id}`,
             {
-              headers: { 'xi-api-key': process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY || '' }
+              headers: {
+                'Accept': 'application/json',
+                'xi-api-key': process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY || ''
+              }
             }
           );
           const conversationData = await detailsResponse.json();
@@ -172,9 +195,13 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
           stopPolling();
 
           // Get summary and outcome
+          console.log("processing conversation data");
           const summary = await processConversationData(conversationData);
-
+          console.log("summary", summary);
           if (summary && currentCustomerSSN.current) {
+            console.log("setting conversation history");
+            console.log("currentCustomerSSN.current", currentCustomerSSN.current);  
+
             const ssn = currentCustomerSSN.current; // Store in local variable
             setConversationHistory(prev => ({
               ...prev,
@@ -187,6 +214,7 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
                 }
               ]
             }));
+            onComplete?.(ssn);
           }
 
           
@@ -198,6 +226,7 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
 
     // Poll every 5 seconds
     pollIntervalRef.current = setInterval(pollForConversations, 5000);
+    console.log('Polling every 5 seconds');
 
     // Set 5 minute timeout
     pollTimeoutRef.current = setTimeout(() => {

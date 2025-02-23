@@ -1,5 +1,5 @@
 import { compact } from 'lodash';
-import { ConversationResponse, ConversationSummary, conversationResponseSchema } from '../types/conversation';
+import { ConversationResponse, ConversationSummary, conversationResponseSchema, TranscriptTurn } from '../types/conversation';
 import { CoreMessage, generateObject } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 
@@ -7,9 +7,10 @@ export async function processConversationData(data: ConversationResponse): Promi
   if (!("conversation_id" in data)) {
     return null;
   }
+  console.log("processing conversation data", data);
 
   const extractedMessages = compact(
-    data.transcript.map((turn) => {
+    data.transcript.map((turn: TranscriptTurn) => {
       let content = turn.message;
 
       if (turn.tool_results) {
@@ -21,15 +22,16 @@ export async function processConversationData(data: ConversationResponse): Promi
       return { role: turn.role, content };
     }),
   );
+  console.log("extractedMessages", extractedMessages);
 
   if (extractedMessages[extractedMessages.length - 1].content !== "[HANGS UP]") {
     extractedMessages.push({ role: "user", content: "[HANGS UP]" });
   }
-
+  console.log("extractedMessages", extractedMessages);
   const formattedMessages = extractedMessages
     .map((turn) => `${turn.role === "user" ? "Debtor" : "Debt Collector"}: ${turn.content}`)
     .join("\n");
-
+  console.log("formattedMessages", formattedMessages);
   const messages: CoreMessage[] = [
     {
       role: "system",
@@ -59,6 +61,9 @@ For the outcome, it should be successful if both parties agree to a settlement o
     messages,
     schema: conversationResponseSchema,
   });
-
-  return object;
+  console.log("object", object);
+  return {
+    ...object,
+    date: new Date()
+  };
 }

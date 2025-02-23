@@ -46,14 +46,12 @@ export function AgentSettingsForm() {
 
       <div className="space-y-2">
         <Label htmlFor="greeting">Greeting</Label>
-        <p className="text-sm text-muted-foreground mb-2">
-          Use {"{agentName}"} to include the agent name in your greeting
-        </p>
         <Textarea
           id="greeting"
           value={settings.greeting}
           onChange={(e) => setSettings({ ...settings, greeting: e.target.value })}
           placeholder="Enter greeting message"
+          rows={5}
         />
       </div>
 

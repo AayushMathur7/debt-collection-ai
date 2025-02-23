@@ -25,6 +25,7 @@ import { CallTranscriptModal } from '@/components/call-transcript-modal';
 import { generateObject, generateText } from "ai"
 import { createOpenAI } from "@ai-sdk/openai"
 import { z } from "zod"
+import { useConversationContext } from '@/context/ConversationContext';
 
 // Mock segments and their filtering logic
 const segments = [
@@ -38,7 +39,7 @@ const mockCustomers: Customer[] = [
   {
     name: "John Smith",
     age: 35,
-    ssn: "XXX-XX-1234",
+    ssn: "XXX-XX-1234", 
     totalOwed: 15000,
     debtStatus: "overdue",
     state: "CA",
@@ -53,7 +54,7 @@ const mockCustomers: Customer[] = [
     age: 42,
     ssn: "XXX-XX-5678",
     totalOwed: 7500,
-    debtStatus: "defaulted",
+    debtStatus: "defaulted", 
     state: "TX",
     city: "Houston",
     zipcode: "77001",
@@ -67,13 +68,78 @@ const mockCustomers: Customer[] = [
     ssn: "XXX-XX-9012",
     totalOwed: 3000,
     debtStatus: "overdue",
-    state: "NY",
+    state: "NY", 
     city: "Brooklyn",
     zipcode: "11201",
     typeOfDebt: "Medical",
     debtAge: 60,
     language: "English"
   },
+  {
+    name: "Sarah Williams",
+    age: 45,
+    ssn: "XXX-XX-3456",
+    totalOwed: 12500,
+    debtStatus: "overdue",
+    state: "FL",
+    city: "Miami",
+    zipcode: "33101",
+    typeOfDebt: "Auto Loan",
+    debtAge: 150,
+    language: "English"
+  },
+  {
+    name: "Michael Chen",
+    age: 31,
+    ssn: "XXX-XX-7890",
+    totalOwed: 8900,
+    debtStatus: "defaulted",
+    state: "WA",
+    city: "Seattle",
+    zipcode: "98101",
+    typeOfDebt: "Student Loan",
+    debtAge: 180,
+    language: "English"
+  },
+  {
+    name: "Ana Rodriguez",
+    age: 39,
+    ssn: "XXX-XX-2345",
+    totalOwed: 4500,
+    debtStatus: "overdue",
+    state: "AZ",
+    city: "Phoenix",
+    zipcode: "85001",
+    typeOfDebt: "Credit Card",
+    debtAge: 75,
+    language: "Spanish"
+  },
+  {
+    name: "Robert Kim",
+    age: 52,
+    ssn: "XXX-XX-6789",
+    totalOwed: 17800,
+    debtStatus: "defaulted",
+    state: "IL",
+    city: "Chicago",
+    zipcode: "60601",
+    typeOfDebt: "Business Loan",
+    debtAge: 210,
+    language: "Korean"
+  },
+  {
+    name: "Emily Brown",
+    age: 29,
+    ssn: "XXX-XX-0123",
+    totalOwed: 6200,
+    debtStatus: "overdue",
+    state: "MA",
+    city: "Boston",
+    zipcode: "02108",
+    typeOfDebt: "Personal Loan",
+    debtAge: 45,
+    language: "English"
+  }
 ];
 
 type CallState = 'idle' | 'in-progress' | 'completed' | 'failed';
@@ -92,7 +158,7 @@ interface CustomerCallState {
 }
 
 export default function ExecuteCampaignPage() {
-  const [selectedSegment, setSelectedSegment] = useState<string>('');
+  const [selectedSegment, setSelectedSegment] = useState<string>('high-value');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [detailsCustomer, setDetailsCustomer] = useState<Customer | null>(null);
   const [strategyModalOpen, setStrategyModalOpen] = useState(false);
@@ -100,7 +166,7 @@ export default function ExecuteCampaignPage() {
   const [callTranscriptModalOpen, setCallTranscriptModalOpen] = useState(false);
   const [activeCallCustomer, setActiveCallCustomer] = useState<Customer | null>(null);
   const [callStates, setCallStates] = useState<Record<string, CustomerCallState>>({});
-  const [conversationHistory, setConversationHistory] = useState<Record<string, ConversationSummary[]>>({});
+  const { conversationHistory, startPolling, stopPolling } = useConversationContext();
 
   // Filter customers based on selected segment
   const filteredCustomers = selectedSegment
@@ -130,6 +196,16 @@ export default function ExecuteCampaignPage() {
 
   const handleCallStateChange = async (customer: Customer, state: CallState, transcript?: string) => {
     console.log('handleCallStateChange', state);
+
+    if (state === 'in-progress') {
+      startPolling(
+        new Date(), 
+        customer.ssn,
+        (ssn) => handleCallStateChange(customer, 'completed')
+      );
+    } else if (state === 'completed' || state === 'failed') {
+      stopPolling();
+    }
 
     setCallStates(prev => ({
       ...prev,
@@ -175,10 +251,10 @@ export default function ExecuteCampaignPage() {
             size="sm"
             variant="secondary"
             onClick={() => handleViewCallTranscript(customer)}
-            className="w-[140px] animate-pulse"
+            className="w-[140px] flex items-center justify-center gap-2"
           >
-            <Eye className="mr-2 h-4 w-4" />
-            View Live Call
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+            Call in Progress
           </Button>
         );
       case 'completed':

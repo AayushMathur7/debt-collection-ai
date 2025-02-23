@@ -53,8 +53,9 @@ export type ConversationSuccessResponse = {
 export type ConversationResponse = ConversationSuccessResponse | ConversationNotFoundResponse;
 
 export const conversationResponseSchema = z.object({
-  summary: z.array(z.string()),
+  summary: z.string(),
   outcome: z.enum(["successful", "unsuccessful", "pending"]),
+  date: z.string().transform((str) => new Date(str))
 });
 
 export type ConversationSummary = z.infer<typeof conversationResponseSchema>;
