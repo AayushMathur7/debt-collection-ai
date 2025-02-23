@@ -22,6 +22,7 @@ import { CustomerDetailsModal } from '@/components/customer-details-modal';
 import type { Customer } from '@/context/CustomersContext';
 import { Info, Phone, PhoneOff, Eye } from 'lucide-react';
 import { CallTranscriptModal } from '@/components/call-transcript-modal';
+import { Configuration, OpenAIApi } from 'openai';
 
 // Mock segments and their filtering logic
 const segments = [
@@ -75,10 +76,17 @@ const mockCustomers: Customer[] = [
 
 type CallState = 'idle' | 'in-progress' | 'completed' | 'failed';
 
+interface ConversationSummary {
+  date: Date;
+  summary: string;
+  outcome: 'successful' | 'unsuccessful' | 'pending';
+}
+
 interface CustomerCallState {
   state: CallState;
   startTime?: Date;
   duration?: number;
+  summary?: ConversationSummary;
 }
 
 export default function ExecuteCampaignPage() {
@@ -90,6 +98,7 @@ export default function ExecuteCampaignPage() {
   const [callTranscriptModalOpen, setCallTranscriptModalOpen] = useState(false);
   const [activeCallCustomer, setActiveCallCustomer] = useState<Customer | null>(null);
   const [callStates, setCallStates] = useState<Record<string, CustomerCallState>>({});
+  const [conversationHistory, setConversationHistory] = useState<Record<string, ConversationSummary[]>>({});
 
   // Filter customers based on selected segment
   const filteredCustomers = selectedSegment
@@ -117,14 +126,60 @@ export default function ExecuteCampaignPage() {
     setDetailsModalOpen(true);
   };
 
-  const handleCallStateChange = (customer: Customer, state: CallState) => {
-    console.log('handleCallStateChange', state)
-    if (state === 'in-progress') {
-      setActiveCallCustomer(customer);
-      setCallTranscriptModalOpen(true);
-    } else if (state === 'completed' || state === 'failed') {
-      setActiveCallCustomer(null);
-      setCallTranscriptModalOpen(false);
+  const summarizeConversation = async (transcript: string) => {
+    const configuration = new Configuration({
+      apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY,
+    });
+    const openai = new OpenAIApi(configuration);
+
+    try {
+      const response = await openai.createChatCompletion({
+        model: "gpt-3.5-turbo",
+        messages: [
+          {
+            role: "system",
+            content: "You are an AI assistant that summarizes debt collection calls. Focus on key points, agreements made, and the outcome of the conversation."
+          },
+          {
+            role: "user",
+            content: `Please summarize this debt collection call transcript and determine if it was successful, unsuccessful, or pending: ${transcript}`
+          }
+        ]
+      });
+
+      const summary = response.data.choices[0]?.message?.content || "No summary available";
+      // Determine outcome based on keywords in the summary
+      let outcome: 'successful' | 'unsuccessful' | 'pending' = 'pending';
+      if (summary.toLowerCase().includes('agreed') || summary.toLowerCase().includes('payment')) {
+        outcome = 'successful';
+      } else if (summary.toLowerCase().includes('refused') || summary.toLowerCase().includes('unable')) {
+        outcome = 'unsuccessful';
+      }
+
+      return { summary, outcome };
+    } catch (error) {
+      console.error('Error generating summary:', error);
+      return { 
+        summary: "Unable to generate summary",
+        outcome: 'pending' as const
+      };
+    }
+  };
+
+  const handleCallStateChange = async (customer: Customer, state: CallState, transcript?: string) => {
+    console.log('handleCallStateChange', state);
+    if (state === 'completed' && transcript) {
+      const { summary, outcome } = await summarizeConversation(transcript);
+      const newSummary: ConversationSummary = {
+        date: new Date(),
+        summary,
+        outcome
+      };
+
+      setConversationHistory(prev => ({
+        ...prev,
+        [customer.ssn]: [...(prev[customer.ssn] || []), newSummary]
+      }));
     }
 
     setCallStates(prev => ({
@@ -179,11 +234,11 @@ export default function ExecuteCampaignPage() {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => handleViewCallTranscript(customer)}
-            className="w-[140px] text-green-600"
+            disabled
+            className="w-[140px] border-green-500 bg-green-50 text-green-700 hover:bg-green-50 hover:text-green-700"
           >
             <Phone className="mr-2 h-4 w-4" />
-            View Transcript
+            Completed
           </Button>
         );
       case 'failed':
@@ -299,6 +354,7 @@ export default function ExecuteCampaignPage() {
             setDetailsModalOpen(open);
             if (!open) setDetailsCustomer(null);
           }}
+          conversationHistory={conversationHistory[detailsCustomer.ssn] || []}
         />
       )}
 
