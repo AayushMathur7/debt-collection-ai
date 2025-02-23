@@ -3,7 +3,7 @@ import { Navigation } from '@/components/ui/navigation';
 import Image from "next/image";
 
 export default function Home() {
-  redirect('/customers');
+  redirect('/execute-campaign');
   
   return null;
 }

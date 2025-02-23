@@ -15,13 +15,12 @@ type AgentSettingsContextType = {
 };
 
 const defaultSettings: AgentSettings = {
-  agentName: "AI Collection Assistant",
-  greeting: "Hello, this is {agentName} calling from ABC Collections. I hope you are having a good day.",
-  miniMiranda: "This is an attempt to collect a debt, and any information obtained will be used for that purpose. This communication is from a debt collector.",
+  agentName: "Mark",
+  greeting: "Hello, this is Mark calling from ABC Collections. I hope you are having a good day.",
+  miniMiranda: "This is an attempt to collect a debt, and any information obtained will be used for that purpose.",
   disclaimers: [
     "This call may be recorded for quality and training purposes.",
     "Please be advised that we are required by law to inform you of your rights.",
-    "All payment arrangements must be confirmed in writing."
   ],
 };
 
