@@ -128,50 +128,8 @@ export default function ExecuteCampaignPage() {
     setDetailsModalOpen(true);
   };
 
-  const summarizeConversation = async (transcript: string) => {
-    // Given transcript, summarize the conversation and return a summary and status
-
-    const openai = createOpenAI({ apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY })
-    const model = openai("gpt-4o")
-
-    const { object } = await generateObject({
-      model,
-      messages: [
-        {
-          role: "system",
-          content: `You are a helpful assistant that accurately summarizes conversations and provides the outcome of the call.
-          
-You will be provided a transcript of a call between a debt collector and a debtor. Take special note about what was being discussed and what is the final resolution of the call.`
-        },
-        {
-          role: "user",
-          content: transcript
-        }
-      ],
-      schema: z.object({
-        summary: z.string(),
-        outcome: z.enum(['successful', 'unsuccessful', 'pending'])
-      })
-    })
-
-    return object
-  }
-
   const handleCallStateChange = async (customer: Customer, state: CallState, transcript?: string) => {
     console.log('handleCallStateChange', state);
-    if (state === 'completed' && transcript) {
-      const { summary, outcome } = await summarizeConversation(transcript);
-      const newSummary: ConversationSummary = {
-        date: new Date(),
-        summary,
-        outcome
-      };
-
-      setConversationHistory(prev => ({
-        ...prev,
-        [customer.ssn]: [...(prev[customer.ssn] || []), newSummary]
-      }));
-    }
 
     setCallStates(prev => ({
       ...prev,

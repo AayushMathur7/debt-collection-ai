@@ -1,7 +1,9 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, ReactNode, useRef, useEffect } from 'react';
 import { useConversation, Role } from '@11labs/react';
+import { processConversationData } from '@/utils/conversationProcessor';
+import { ConversationSummary } from '@/types/conversation';
 
 export interface TranscriptEntry {
   speaker: 'Agent' | 'Customer';
@@ -16,9 +18,13 @@ interface ConversationContextType {
   connectionStatus: string;
   isCallActive: boolean;
   conversationId: string | null;
+  conversationHistory: Record<string, ConversationSummary[]>;  // Add this
   startCall: (payload: OutboundCallPayload) => Promise<void>;
   endCall: () => Promise<void>;
   addTranscriptEntry: (entry: TranscriptEntry) => void;
+  startPolling: (startTime: Date, customerSSN: string) => void;
+  stopPolling: () => void;
+  isPolling: boolean;
 }
 
 interface OutboundCallPayload {
@@ -34,12 +40,17 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [isCallActive, setIsCallActive] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [isPolling, setIsPolling] = useState(false);
+  const hasStartedCall = useRef(false);
+  const pollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [conversationHistory, setConversationHistory] = useState<Record<string, ConversationSummary[]>>({});
+  const currentCustomerSSN = useRef<string | null>(null);
 
   const conversation = useConversation({
     onConnect: () => {
       setError(null);
       setIsCallActive(true);
-      // Add initial transcript entry
       addTranscriptEntry({
         speaker: 'Agent',
         text: 'Call connected. Agent is ready.',
@@ -55,7 +66,6 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
       });
     },
     onMessage: (props: { message: string; source: Role }) => {
-      // Handle incoming message from the agent
       addTranscriptEntry({
         speaker: props.source === 'ai' ? 'Agent' : 'Customer',
         text: props.message,
@@ -73,13 +83,13 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
   });
 
   const startCall = useCallback(async (payload: OutboundCallPayload) => {
-    try {
-      // const conversationId = await conversation.startSession({
-      //   agentId: "RWMYfB6iooxJLltlgX22", // Your agent ID
-      // });
+    if (hasStartedCall.current) {
+      console.log('Call already started');
+      return;
+    }
 
-      // setConversationId(conversationId); // Generate a unique ID for now
-      // console.log("conversationId", conversationId)
+    try {
+      hasStartedCall.current = true;
       console.log('starting call');
       const response = await fetch('/api/outbound-call', {
         method: 'POST',
@@ -96,8 +106,10 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
       const data = await response.json();
       setConversationId(data.callSid);
     } catch (error) {
+      hasStartedCall.current = false;
       console.error('Error:', error);
       setError(error instanceof Error ? error.message : 'Failed to start call');
+      throw error; // Re-throw to allow handling in the component
     }
   }, []);
 
@@ -105,15 +117,101 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
     try {
       console.log('ending call');
       await conversation.endSession();
+      hasStartedCall.current = false;
       setConversationId(null);
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to end call');
+      throw error; // Re-throw to allow handling in the component
     }
   }, [conversation]);
 
   const addTranscriptEntry = useCallback((entry: TranscriptEntry) => {
     setTranscript(prev => [...prev, entry]);
   }, []);
+
+  const startPolling = useCallback((startTime: Date, customerSSN: string) => {
+    if (isPolling) return;
+
+    currentCustomerSSN.current = customerSSN;
+    
+    const callStartTimeUnix = Math.floor(startTime.getTime() / 1000);
+    setIsPolling(true);
+
+    const pollForConversations = async () => {
+      console.log('polling for conversations');
+      try {
+        const response = await fetch(
+          `https://api.elevenlabs.io/v1/convai/conversations?agent_id=${process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_ID}`,
+          {
+            method: 'GET',
+            headers: { 'xi-api-key': process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY || '' }
+          }
+        );
+        const data = await response.json();
+        
+        const newConversation = data.conversations?.find((conv: any) => 
+          conv.start_time_unix_secs > callStartTimeUnix && 
+          conv.status === 'completed'
+        );
+
+        if (newConversation) {
+          const detailsResponse = await fetch(
+            `https://api.elevenlabs.io/v1/convai/conversations/${newConversation.conversation_id}`,
+            {
+              headers: { 'xi-api-key': process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY || '' }
+            }
+          );
+          const conversationData = await detailsResponse.json();
+          console.log('Found new completed conversation:', conversationData);
+          stopPolling();
+
+          // Get summary and outcome
+          const summary = await processConversationData(conversationData);
+
+          if (summary && currentCustomerSSN.current) {
+            const ssn = currentCustomerSSN.current; // Store in local variable
+            setConversationHistory(prev => ({
+              ...prev,
+              [ssn]: [
+                ...(prev[ssn] || []),
+                {
+                  date: new Date(),
+                  summary: summary.summary,
+                  outcome: summary.outcome
+                }
+              ]
+            }));
+          }
+
+          
+        }
+      } catch (error) {
+        console.error('Error polling conversations:', error);
+      }
+    };
+
+    // Poll every 5 seconds
+    pollIntervalRef.current = setInterval(pollForConversations, 5000);
+
+    // Set 5 minute timeout
+    pollTimeoutRef.current = setTimeout(() => {
+      stopPolling();
+      console.log('Polling timeout reached');
+    }, 5 * 60 * 1000);
+  }, [isPolling]);
+
+  const stopPolling = useCallback(() => {
+    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
+    setIsPolling(false);
+  }, []);
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      stopPolling();
+    };
+  }, [stopPolling]);
 
   return (
     <ConversationContext.Provider
@@ -127,6 +225,10 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
         startCall,
         endCall,
         addTranscriptEntry,
+        conversationHistory,
+        startPolling,
+        stopPolling,
+        isPolling,
       }}
     >
       {children}
@@ -140,4 +242,4 @@ export function useConversationContext() {
     throw new Error('useConversationContext must be used within a ConversationProvider');
   }
   return context;
-} 
+}
