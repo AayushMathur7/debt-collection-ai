@@ -68,10 +68,12 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
 
   const startCall = useCallback(async () => {
     try {
-      await conversation.startSession({
+      const conversationId = await conversation.startSession({
         agentId: "RWMYfB6iooxJLltlgX22", // Your agent ID
       });
-      setConversationId(Date.now().toString()); // Generate a unique ID for now
+
+      setConversationId(conversationId); // Generate a unique ID for now
+      console.log("conversationId", conversationId)
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to start call');
     }

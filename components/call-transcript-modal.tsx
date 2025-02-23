@@ -16,11 +16,11 @@ import { AlertCircle, Mic, Volume2 } from 'lucide-react';
 interface CallTranscriptModalProps {
   customer: Customer;
   open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onEndCall: () => void;
+  onOpenChange: (open: boolean, transcript?: string) => void;  // Change to single string
+  onEndCall: (transcript?: string) => void;  // Change to single string
   startTime: Date;
 }
-
+  
 export function CallTranscriptModal({ 
   customer, 
   open, 
@@ -71,10 +71,16 @@ export function CallTranscriptModal({
     };
   }, [open, isClosing]);
 
+  const formatTranscript = () => {
+    return transcript.map(entry => 
+      `${entry.speaker}: ${entry.text}`
+    ).join('\n');
+  };
+
   const handleDialogChange = async (newOpen: boolean) => {
     if (!newOpen && !isClosing) {
       await endCallSafely();
-      onOpenChange(false);
+      onOpenChange(false, formatTranscript());  // Pass formatted transcript
       setIsClosing(false);
     } else if (newOpen && !isClosing) {
       onOpenChange(true);
@@ -84,7 +90,7 @@ export function CallTranscriptModal({
   const handleEndCall = async () => {
     if (!isClosing) {
       await endCallSafely();
-      onOpenChange(false);
+      onOpenChange(false, formatTranscript());  // Pass formatted transcript
       setIsClosing(false);
     }
   };
