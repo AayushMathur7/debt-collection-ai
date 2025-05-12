@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 export async function POST(req: Request) {
   const body = await req.json();
   console.log('body', body);
-  const response = await fetch('https://aa60-2601-646-200-50e0-f471-f6bd-238b-b46c.ngrok-free.app/outbound-call', {
+  const response = await fetch('https://4323-2601-646-200-50e0-7983-d885-2ac6-8ffb.ngrok-free.app/outbound-call', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
