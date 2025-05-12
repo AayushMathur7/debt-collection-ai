@@ -15,6 +15,20 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAgentSettings } from '@/context/AgentSettingsContext';
 import { Customer } from '@/context/CustomersContext';
 import { useConversationContext } from '@/context/ConversationContext';
+import { CheckCircle, Loader2, Circle } from 'lucide-react'; // Import icons
+import { IBM_Plex_Mono } from 'next/font/google'; // Import Google Font
+import { Source_Serif_4 } from 'next/font/google'; // Corrected Serif Font import
+
+// Initialize the fonts
+const ibmPlexMono = IBM_Plex_Mono({
+  subsets: ['latin'],
+  weight: ['400', '500'], // Include weights needed
+});
+
+const sourceSerif4 = Source_Serif_4({
+  subsets: ['latin'],
+  weight: ['400'], // Regular weight
+});
 
 interface StrategyModalProps {
   customer: Customer;
@@ -23,18 +37,56 @@ interface StrategyModalProps {
   onCallStart: () => void;
 }
 
+// Define checklist item structure
+interface ChecklistItem {
+  id: number;
+  text: string;
+  status: 'pending' | 'loading' | 'done';
+}
+
+// Initial checklist items based on CA guidelines (simplified)
+const initialChecklist: ChecklistItem[] = [
+  { id: 1, text: 'Verify debtor identity and contact info', status: 'pending' },
+  { id: 2, text: 'Check statute of limitations', status: 'pending' },
+  { id: 3, text: 'Review debt validation status', status: 'pending' },
+  { id: 4, text: 'Prepare required disclosures (Mini-Miranda)', status: 'pending' },
+  { id: 5, text: 'Confirm call time compliance (8am-9pm)', status: 'pending' },
+];
+
 export function StrategyModal({ customer, open, onOpenChange, onCallStart }: StrategyModalProps) {
   const { settings } = useAgentSettings();
   const [isGenerating, setIsGenerating] = useState(false);
   const [strategy, setStrategy] = useState<string>('');
+  const [checklist, setChecklist] = useState<ChecklistItem[]>(initialChecklist);
   const { startCall } = useConversationContext();
+
+  const updateChecklistItemStatus = (id: number, status: 'loading' | 'done') => {
+    setChecklist(prev =>
+      prev.map(item => (item.id === id ? { ...item, status } : item))
+    );
+  };
+
+  const resetChecklist = () => {
+    setChecklist(initialChecklist.map(item => ({ ...item, status: 'pending' })));
+  };
+
   const generateStrategy = async () => {
     setIsGenerating(true);
+    setStrategy(''); // Clear previous strategy
+    resetChecklist(); // Reset checklist for new generation
+
     try {
-      // Mock API call delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Mock strategy generation
+      // Simulate checklist progress with delays
+      for (let i = 0; i < initialChecklist.length; i++) {
+        updateChecklistItemStatus(initialChecklist[i].id, 'loading');
+        await new Promise(resolve => setTimeout(resolve, 700)); // Simulate work
+        updateChecklistItemStatus(initialChecklist[i].id, 'done');
+      }
+
+      // Final delay before showing strategy
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Mock strategy generation (as before)
       const mockStrategy = `
 Collection Strategy for ${customer.name}:
 
@@ -63,10 +115,11 @@ Collection Strategy for ${customer.name}:
    "${settings.miniMiranda}"
    ${settings.disclaimers.map(d => `"${d}"`).join('\n   ')}
       `;
-      
+
       setStrategy(mockStrategy);
     } catch (error) {
       toast.error('Failed to generate strategy');
+      resetChecklist(); // Reset checklist on error
     } finally {
       setIsGenerating(false);
     }
@@ -110,15 +163,23 @@ Collection Strategy for ${customer.name}:
             )}
 
             {isGenerating && (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground animate-pulse">
-                  Generating collection strategy...
-                </p>
+              <div className="py-6 px-4 space-y-4">
+                <p className="text-center text-lg text-muted-foreground font-medium pb-3">Preparing Strategy & Checking Compliance...</p>
+                {checklist.map((item) => (
+                  <div key={item.id} className="flex items-center space-x-3 animate-fade-in opacity-0 p-2 rounded-md transition-colors duration-200 ease-in-out" style={{ animationDelay: `${item.id * 0.15}s`, animationFillMode: 'forwards' }}>
+                    {item.status === 'pending' && <Circle className="h-5 w-5 text-gray-400" />}
+                    {item.status === 'loading' && <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />}
+                    {item.status === 'done' && <CheckCircle className="h-5 w-5 text-green-600" />}
+                    <span className={`text-base ${ibmPlexMono.className} ${item.status === 'done' ? 'text-gray-500 line-through' : 'text-gray-800'}`}>
+                      {item.text}
+                    </span>
+                  </div>
+                ))}
               </div>
             )}
 
             {strategy && !isGenerating && (
-              <div className="whitespace-pre-wrap font-mono text-sm border rounded-md p-4 bg-muted">
+              <div className={`whitespace-pre-wrap ${sourceSerif4.className} text-base border rounded-md p-4`}>
                 {strategy}
               </div>
             )}
@@ -138,4 +199,17 @@ Collection Strategy for ${customer.name}:
       </DialogContent>
     </Dialog>
   );
-} 
+}
+
+// Helper CSS for animation (consider moving to global CSS or tailwind config)
+const style = document.createElement('style');
+style.innerHTML = `
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fade-in 0.6s ease-out;
+}
+`;
+document.head.appendChild(style);
