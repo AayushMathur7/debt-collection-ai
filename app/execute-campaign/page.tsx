@@ -403,6 +403,7 @@ export default function ExecuteCampaignPage() {
             if (!open) setDetailsCustomer(null);
           }}
           conversationHistory={conversationHistory[detailsCustomer.ssn] || []}
+          onPrepareAICall={handleExecute}
         />
       )}
 
