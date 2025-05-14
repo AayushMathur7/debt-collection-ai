@@ -133,7 +133,11 @@ export function CustomerDetailsModal({
   useEffect(() => {
     if (open) { // Regenerate when modal opens for different customers or refresh
       // Mock Experian Score (between 300 and 850)
-      setMockExperianScore(Math.floor(Math.random() * (850 - 300 + 1)) + 300);
+      if (customer.name === "John Smith") {
+        setMockExperianScore(667);
+      } else {
+        setMockExperianScore(Math.floor(Math.random() * (850 - 300 + 1)) + 300);
+      }
 
       // Mock Default History
       const generateDefaultHistory = () => {
