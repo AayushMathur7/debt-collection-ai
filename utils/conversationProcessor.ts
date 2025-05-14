@@ -9,24 +9,51 @@ export async function processConversationData(data: ConversationResponse): Promi
   }
   console.log("processing conversation data", data);
 
-  const extractedMessages = compact(
-    data.transcript.map((turn: TranscriptTurn) => {
-      let content = turn.message;
+  let extractedMessages;
+  try {
+    extractedMessages = compact(
+      data.transcript.map((turn: TranscriptTurn) => {
+        let content = turn.message;
 
-      if (turn.tool_results) {
-        if (turn.tool_results[0].tool_name === "end_call") {
-          content = "[HANGS UP]";
+        // Safely check for tool_results and tool_name to avoid "undefined" errors
+        try {
+          if (turn.tool_results && 
+              Array.isArray(turn.tool_results) && 
+              turn.tool_results.length > 0 && 
+              turn.tool_results[0] && 
+              typeof turn.tool_results[0].tool_name === 'string' &&
+              turn.tool_results[0].tool_name === "end_call") {
+            content = "[HANGS UP]";
+          }
+        } catch (error) {
+          console.error("Error checking tool_results:", error);
+          // Continue processing without changing content
         }
-      } else if (!content) return null;
-
-      return { role: turn.role, content };
-    }),
-  );
-  console.log("extractedMessages", extractedMessages);
-
-  if (extractedMessages[extractedMessages.length - 1].content !== "[HANGS UP]") {
-    extractedMessages.push({ role: "user", content: "[HANGS UP]" });
+        
+        if (!content) return null;
+        return { role: turn.role, content };
+      }),
+    );
+    console.log("extractedMessages", extractedMessages);
+  } catch (error) {
+    console.error("Error processing transcript:", error);
+    return null;
   }
+
+  // Check if call ended based on metadata
+  const isCallEnded = data.status === "done" || 
+                     data.metadata?.termination_reason === "Client disconnected" ||
+                     (data.metadata?.termination_reason && 
+                      data.metadata.termination_reason.includes("disconnect"));
+  
+  // Add [HANGS UP] at the end if call ended but no hang up message exists
+  if (extractedMessages.length > 0 && 
+      (isCallEnded || data.metadata?.call_duration_secs > 0) && 
+      extractedMessages[extractedMessages.length - 1]?.content !== "[HANGS UP]") {
+    extractedMessages.push({ role: "user", content: "[HANGS UP]" });
+    console.log("Added [HANGS UP] message based on call status");
+  }
+
   console.log("extractedMessages", extractedMessages);
   const formattedMessages = extractedMessages
     .map((turn) => `${turn.role === "user" ? "Debtor" : "Debt Collector"}: ${turn.content}`)

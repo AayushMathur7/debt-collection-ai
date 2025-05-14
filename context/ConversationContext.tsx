@@ -191,33 +191,62 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
             }
           );
           const conversationData = await detailsResponse.json();
-          console.log('Found new completed conversation:', conversationData);
-          stopPolling();
-
-          // Get summary and outcome
-          console.log("processing conversation data");
-          const summary = await processConversationData(conversationData);
-          console.log("summary", summary);
-          if (summary && currentCustomerSSN.current) {
-            console.log("setting conversation history");
-            console.log("currentCustomerSSN.current", currentCustomerSSN.current);  
-
-            const ssn = currentCustomerSSN.current; // Store in local variable
-            setConversationHistory(prev => ({
-              ...prev,
-              [ssn]: [
-                ...(prev[ssn] || []),
-                {
-                  date: new Date(),
-                  summary: summary.summary,
-                  outcome: summary.outcome
-                }
-              ]
-            }));
-            onComplete?.(ssn);
-          }
-
+          console.log('Found conversation:', conversationData);
           
+          // Add detailed debugging to see what's in the response
+          console.log('Conversation status:', conversationData.status);
+          console.log('Termination reason:', conversationData.metadata?.termination_reason);
+          
+          // Enhanced detection of completed conversations
+          const isConversationCompleted = 
+            // Check for conversation status
+            conversationData.status === "done" || 
+            conversationData.status === "completed" || 
+            conversationData.status === "failed" ||
+            // Check for termination metadata
+            conversationData.metadata?.termination_reason === "Client disconnected" ||
+            (conversationData.metadata?.termination_reason && 
+             conversationData.metadata.termination_reason.includes("disconnect")) ||
+            // Check if call duration exists and has passed
+            (conversationData.metadata?.call_duration_secs && 
+             conversationData.metadata.call_duration_secs > 0) ||
+            // Check messages for hang up text
+            (conversationData.transcript && 
+             conversationData.transcript.some((turn: any) => 
+               turn.message?.includes("[HANGS UP]"))
+            );
+          
+          console.log('Is conversation completed?', isConversationCompleted);
+
+          if (isConversationCompleted) {
+            console.log('Conversation is completed, stopping polling');
+            stopPolling();
+
+            // Get summary and outcome
+            console.log("processing conversation data");
+            const summary = await processConversationData(conversationData);
+            console.log("summary", summary);
+            if (summary && currentCustomerSSN.current) {
+              console.log("setting conversation history");
+              console.log("currentCustomerSSN.current", currentCustomerSSN.current);  
+
+              const ssn = currentCustomerSSN.current; // Store in local variable
+              setConversationHistory(prev => ({
+                ...prev,
+                [ssn]: [
+                  ...(prev[ssn] || []),
+                  {
+                    date: new Date(),
+                    summary: summary.summary,
+                    outcome: summary.outcome
+                  }
+                ]
+              }));
+              onComplete?.(ssn);
+            }
+          } else {
+            console.log('Conversation is still in progress, continuing to poll');
+          }
         }
       } catch (error) {
         console.error('Error polling conversations:', error);

@@ -244,17 +244,21 @@ export default function ExecuteCampaignPage() {
     }
   };
 
-  // Add new handler for modal close
-  const handleTranscriptModalClose = (open: boolean, transcript?: string) => {  // Add transcript parameter
+  // Update handler for modal close
+  const handleTranscriptModalClose = (open: boolean, transcript?: string) => {
     setCallTranscriptModalOpen(open);
+    // When closing the modal, we don't want to change the call state
+    // We just clean up the activeCallCustomer reference
     if (!open && activeCallCustomer) {
-      handleCallStateChange(activeCallCustomer, 'completed', transcript);  // Pass the transcript
-      setCallStates(prev => ({
-        ...prev,
-        [activeCallCustomer.ssn]: { state: 'completed' }
-      }));
       setActiveCallCustomer(null);
     }
+  };
+
+  // Add a separate handler for explicitly ending a call
+  const handleEndCall = (customer: Customer, transcript?: string) => {
+    handleCallStateChange(customer, 'completed', transcript);
+    setCallTranscriptModalOpen(false);
+    setActiveCallCustomer(null);
   };
 
   const getCallStateButton = (customer: Customer) => {
@@ -411,8 +415,8 @@ export default function ExecuteCampaignPage() {
         <CallTranscriptModal
         customer={activeCallCustomer}
         open={callTranscriptModalOpen}
-        onOpenChange={(open, transcript) => handleTranscriptModalClose(open, transcript)}  // Modify to pass transcript
-        onEndCall={(transcript) => handleCallStateChange(activeCallCustomer!, 'completed', transcript)}
+        onOpenChange={handleTranscriptModalClose}
+        onEndCall={(transcript) => handleEndCall(activeCallCustomer!, transcript)}
         startTime={callStates[activeCallCustomer?.ssn]?.startTime!}
       />
       )}
